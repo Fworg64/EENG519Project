@@ -1,0 +1,97 @@
+axel_len = .62;
+%dt = .02;
+%time_to_solve = 0:dt:10;
+GGG = simset('Solver', 'ode4', 'FixedStep', .02)
+sim('robotdynamic_simulink.slx', time_to_solve, GGG)
+
+figure();
+subplot(2,1,1);
+plot(delta_accum)
+legend('x', 'y', 'theta', 'Ul', 'Ur')
+%subplot(2,1,2);
+%plot(measurements)
+legend('Ul_{cmd}', 'Ur_{cmd}', 'd2x', 'd2y', 'omega', 'x', 'y', 'theta', 'Ul_{read}', 'Ur_{read}')
+
+%TODO add IMU offset and transform from local to global coord
+%add noise to measurements
+IMUx_variance = .1;
+IMUy_variance = .1;
+IMUomega_variance = .1;
+
+POSx_variance = .1;
+POSy_variance = .1;
+POStheta_variance = .1;
+
+Ul_read_variance = .1;
+Ur_read_variance = .1;
+
+
+time_len = size(measurements.Data)
+Ul_cmd_rec = measurements.Data(:,1); %know input exactly
+Ur_cmd_rec = measurements.Data(:,2);
+
+d2x_rec = measurements.Data(:,3) + IMUx_variance * randn(time_len(1), 1);
+d2y_rec = measurements.Data(:,4) + IMUx_variance * randn(time_len(1), 1);
+omega_rec = measurements.Data(:,5) + IMUomega_variance*randn(time_len(1), 1);
+
+x_rec = measurements.Data(:,6) + POSx_variance *  randn(time_len(1), 1);
+y_rec = measurements.Data(:,7) + POSy_variance *  randn(time_len(1), 1);
+theta_rec = measurements.Data(:,8) + POStheta_variance *  randn(time_len(1), 1);
+Ul_read_rec = measurements.Data(:,9) + Ul_read_variance * randn(time_len(1), 1);
+Ur_read_rec = measurements.Data(:,10) + Ur_read_variance * randn(time_len(1),1);
+
+subplot(2,1,2)
+hold on;
+plot(measurements.Time, x_rec)
+plot(measurements.Time, y_rec)
+plot(delta_accum.Time, delta_accum.Data(:,3))
+plot(delta_accum.Time, delta_accum.Data(:,4))
+
+
+
+%recursivly build estimate of true states x, y, theta, dx, dy, omega,
+%and effective Ul, Ur (wheel velocity - slip)
+
+%effective = velcotity given to vehicle from wheel
+%actual    = actual speed of wheel (might be slipping)
+%cmd       = velocity sent to controller
+
+%for Ur_eff and Ul_eff
+% Ux_eff = Ux_act - slip
+% Ux_eff_hat = Ux_act_est - slip_est
+% Ux_act_est = [Ux_act_est + K(Ux_mea - Ux_act_est)] ...
+%              + (dUx/ dt) * dt <-control input accel (known)
+% slip_est   = ? comes from slip model? actual - effective
+
+%for now, slip_est = 0
+
+%for omega, omega = (Ur_eff - Ul_eff)/AxelLen
+%so need pomega / pUr and pomega / pUl
+%and 
+% omega_est = (Ur_eff_hat - Ul_eff_hat)/AxelLen 
+% omega_est = omega_est + K(omega_mea - omega_est)
+% omega_est = omega_est + (Ur_eff_hat + (dUr)*dt - Ul_eff_hat - (dUl)*dt)/AxelLen 
+
+% theta_est = theta_est + K(theta_mea - theta_est)
+% theta_est = theta_est + omega_est*dt
+
+%dx,dy are local dx,dy (from wheel vels) transformed by theta
+%need instant turn radius, world rot mat, then dPos:
+%  R = AxelLen/2 * (Ur + Ul)/(Ur - Ul);
+%  rot = [cos(w*dt), -sin(w*dt);sin(w*dt),cos(w*dt)];
+%  dPos = rot*[0;-R] + [0;R];
+%so using our estimates:
+%  R_est = AxelLen/2 * (Ur_eff_est + Ul_eff_est) / (Ur_eff_est - Ul_eff_est)
+%  ^^ Need care for zero point turns (Ur = Ul)
+%  rot_est: use omega_est * dt for w*dt
+
+%x and y then:
+% x_est = x_est + K(x_mea - x_est)
+% x_est = x_est + dx*dt
+% similar for y
+
+
+
+
+
+
