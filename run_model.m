@@ -1,7 +1,8 @@
 axel_len = .62;
 %dt = .02;
 %time_to_solve = 0:dt:10;
-GGG = simset('Solver', 'ode4', 'FixedStep', .02)
+delta_time = .02;
+GGG = simset('Solver', 'ode4', 'FixedStep', delta_time)
 sim('robotdynamic_simulink.slx', time_to_solve, GGG)
 
 figure();
@@ -52,45 +53,12 @@ plot(delta_accum.Time, delta_accum.Data(:,4))
 %recursivly build estimate of true states x, y, theta, dx, dy, omega,
 %and effective Ul, Ur (wheel velocity - slip)
 
-%effective = velcotity given to vehicle from wheel
-%actual    = actual speed of wheel (might be slipping)
-%cmd       = velocity sent to controller
+% new_est_rec = zeros(6(or8?), time_len)
+%for index = 1:time_len
+%  new_est(:,index) = propagateEstimate([Ul, Ur], new_est, meas, delta_time)
+%end
 
-%for Ur_eff and Ul_eff
-% Ux_eff = Ux_act - slip
-% Ux_eff_hat = Ux_act_est - slip_est
-% Ux_act_est = [Ux_act_est + K(Ux_mea - Ux_act_est)] ...
-%              + (dUx/ dt) * dt <-control input accel (known)
-% slip_est   = ? comes from slip model? actual - effective
-
-%for now, slip_est = 0
-
-%for omega, omega = (Ur_eff - Ul_eff)/AxelLen
-%so need pomega / pUr and pomega / pUl
-%and 
-% omega_est = (Ur_eff_hat - Ul_eff_hat)/AxelLen 
-% omega_est = omega_est + K(omega_mea - omega_est)
-% omega_est = omega_est + (Ur_eff_hat + (dUr)*dt - Ul_eff_hat - (dUl)*dt)/AxelLen 
-
-% theta_est = theta_est + K(theta_mea - theta_est)
-% theta_est = theta_est + omega_est*dt
-
-%dx,dy are local dx,dy (from wheel vels) transformed by theta
-%need instant turn radius, world rot mat, then dPos:
-%  R = AxelLen/2 * (Ur + Ul)/(Ur - Ul);
-%  rot = [cos(w*dt), -sin(w*dt);sin(w*dt),cos(w*dt)];
-%  dPos = rot*[0;-R] + [0;R];
-%so using our estimates:
-%  R_est = AxelLen/2 * (Ur_eff_est + Ul_eff_est) / (Ur_eff_est - Ul_eff_est)
-%  ^^ Need care for zero point turns (Ur = Ul)
-%  rot_est: use omega_est * dt for w*dt
-
-%x and y then:
-% x_est = x_est + K(x_mea - x_est)
-% x_est = x_est + dx*dt
-% similar for y
-
-
+%plot new_est vs time.
 
 
 
