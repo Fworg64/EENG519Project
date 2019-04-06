@@ -2,6 +2,7 @@ axel_len = .62;
 %dt = .02;
 %time_to_solve = 0:dt:10;
 delta_time = .02;
+time_to_solve = [0, 10];
 GGG = simset('Solver', 'ode4', 'FixedStep', delta_time)
 sim('robotdynamic_simulink.slx', time_to_solve, GGG)
 

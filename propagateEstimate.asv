@@ -34,8 +34,8 @@ Kdy = .5;
 Kom = .5;
 KUl = .5;
 KUr = .5;
-%KSl = .5;
-%KSr = .5;
+KSl = .5;
+KSr = .5;
 
 %for now, slip_est = 0
 Ul = inputs(1); %known (what we asked the wheels to do)
@@ -65,7 +65,7 @@ Ur_eff_hat = (Ur_hat_plus - Slip_r);
  omega_est = omega_est + Kom*(omega_mea - omega_est);
 % omega_est = omega_est + (Ur_eff_hat + (dUr)*dt - Ul_eff_hat - (dUl)*dt)/AxelLen 
 
- theta_est = prev_est(6);
+ theta_est = prev_est(3);
  theta_est = theta_est + Kth*(theta_mea - theta_est);
  theta_est = theta_est + omega_est*dt;
 % ^^ need care for angle reacharound
@@ -87,26 +87,19 @@ dPos_est = rot_est*[0;-R_est] + [0;R_est];
 
 %TODO
 %x and y then:
-dx_mea = dPos_est(1); %is this ok? treating as measurement?
-dy_mea = dPos_est(2);
- dx_est = prev_est(4);
- dy_est = prev_est(5);
- %we dont have a true dx_mea or dy_mea?
- dx_est = dx_est + Kdx*(dx_mea - dx_est);
- dy_est = dy_est + Kdy*(dy_mea - dy_est);
- d2x_est = meas(1); %dont have model?
- d2y_est = meas(2); %TODO do from model, you cann...
- dx_est = dx_est + d2x_est*dt;
- dy_est = dy_est + d2y_est*dt;
- 
- x_mea = meas(4);
- y_mea = meas(5);
 x_est = prev_est(1);
 y_est = prev_est(2);
+dx = dPos_est(1);
+dy = dPos_est(2);
+ dx_est = prev_est(4);
+ dy_est = prev_est(5);
+ %we dont have a dx_mea or dy_mea
+ dx_est = dx_est + Kdx*(dx_mea - dx_est);
+ dy_est = dy_est + Kdy*(dy_mea - dy_est);
  x_est = x_est + Kx*(x_mea - x_est);
- x_est = x_est + dx_est*dt;
+ x_est = x_est + dx*dt;
  y_est = y_est + Ky*(y_mea - y_est);
- y_est = y_est + dy_est*dt;
+ y_est = y_est + dy*dt;
  
  state_estimate = [x_est;  y_est;  theta_est;
                    dx_est; dy_est; omega_est;
