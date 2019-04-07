@@ -16,9 +16,9 @@ sim('robotdynamic_simulink.slx', time_to_solve, GGG)
 
 %TODO add IMU offset and transform from local to global coord
 %add noise to measurements
-IMUx_variance = .1;
-IMUy_variance = .1;
-IMUomega_variance = .1;
+IMUx_variance = 0;%.1;
+IMUy_variance = 0;%.1;
+IMUomega_variance = 0;%.1;
 
 POSx_variance = .1;
 POSy_variance = .1;
@@ -71,21 +71,21 @@ plot(measurements.Time, x_rec, 'b*', 'MarkerSize', 1)
 plot(measurements.Time, y_rec, 'r*', 'MarkerSize', 1)
 plot(measurements.Time, theta_rec, 'c*', 'MarkerSize', 1)
 plot(measurements.Time, omega_rec, 'g*', 'MarkerSize', 1)
-plot(measurements.Time, d2x_rec, '*', 'MarkerSize', 1,'MarkerFaceColor',[.2 .4 .6])
-plot(measurements.Time, d2y_rec, '*', 'MarkerSize', 1,'MarkerFaceColor',[.6 .2 .4])
+plot(measurements.Time, d2x_rec, 'o*', 'MarkerSize', 1)
+plot(measurements.Time, d2y_rec, 'p*', 'MarkerSize', 1)
 plot(measurements.Time, new_est_rec(1,:), 'b--')
 plot(measurements.Time, new_est_rec(2,:), 'r--')
 plot(measurements.Time, new_est_rec(3,:), 'c--')
 plot(measurements.Time, new_est_rec(6,:), 'g--')
-plot(measurements.Time, new_est_rec(4,:), '--', 'MarkerFaceColor',[.2 .4 .6])
-plot(measurements.Time, new_est_rec(5,:), '--', 'MarkerFaceColor',[.6 .2 .4])
+plot(measurements.Time, new_est_rec(4,:), 'o--')
+plot(measurements.Time, new_est_rec(5,:), 'p--')
 plot(measurements.Time, delta_accum.Data(:, 1), 'b-')
 plot(measurements.Time, delta_accum.Data(:, 2), 'r-')
 plot(measurements.Time, delta_accum.Data(:, 3), 'c-')
 legend('x_{mea}', 'y_{mea}', 'th_{mea}', 'om_{mea}',...
        'd2x_{mea}', 'd2y_{mea}',...
        'x_{est}', 'y_{est}', 'th_{est}', 'om_{est}',...
-       'dx_{est}', 'dy_{est}',...
+       'dx_{est}', 'dy_{est}'
        'x_{tru}', 'y_{tru}', 'th_{tru}');
 
 
