@@ -3,8 +3,8 @@ axel_len = .62;
 %time_to_solve = 0:dt:10;
 delta_time = .02;
 time_to_solve = [0:delta_time:10];
-left_cmd = .5 - .5*exp(-4*time_to_solve);
-right_cmd = .2 - .2*exp(-4*time_to_solve);%sin(time_to_solve);
+left_cmd = .5 - .5*exp(-2*time_to_solve);
+right_cmd = .2 - .2*exp(-2*time_to_solve);%sin(time_to_solve);
 left_wheel_cmd_vels  = [time_to_solve' , left_cmd'];
 right_wheel_cmd_vels = [time_to_solve' ,right_cmd'];
 
@@ -102,6 +102,8 @@ plot(measurements.Time, new_est_rec(7,:), '--', 'MarkerFaceColor',[.2 .4 .6])
 plot(measurements.Time, new_est_rec(8,:), '--', 'MarkerFaceColor',[.6 .2 .4])
 plot(measurements.Time, delta_accum.Data(:, 4), '-', 'MarkerFaceColor',[.2 .4 .6])
 plot(measurements.Time, delta_accum.Data(:, 5), '-', 'MarkerFaceColor',[.6 .2 .4])
+plot(measurements.Time, left_cmd, 'd', 'MarkerFaceColor',[.9 .4 .6])
+plot(measurements.Time, right_cmd, 'd', 'MarkerFaceColor',[.9 .6 .4])
 
 %plot new_est vs time.
 

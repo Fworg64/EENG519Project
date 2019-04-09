@@ -1,4 +1,0 @@
-function state_estimate = propagateEstimate(inputs, prev_est, meas)
-%propagateEstimate
-% given the current inputs (wheel velocitiy commands): [Ul; Ur],
-% the previous estimate of the state: [x;y;theta;dx;dy;dtheta
