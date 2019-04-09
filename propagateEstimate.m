@@ -29,11 +29,11 @@ function state_estimate = propagateEstimate(inputs, prev_est, meas, dt)
 Kx = .2;
 Ky = .2;
 Kth = .2;%0;%.8;
-Kdx = .5;
-Kdy = .5;
-Kom = .5;
-KUl = .5;
-KUr = .5;
+Kdx = .8;
+Kdy = .8;
+Kom = .8;
+KUl = .8;
+KUr = .8;
 %KSl = .5;
 %KSr = .5;
 
@@ -51,10 +51,10 @@ Ur_accel = max(-.4, min(Ur_accel, .4));
 Ul_mea = meas(7);
 Ur_mea = meas(8);
 Ul_hat_plus = Ul_hat_prev + KUl*(Ul_mea - (Ul_hat_prev)); 
-Ur_hat_plus = Ur_hat_prev + KUr*(Ur_mea - (Ur_hat_prev + Ur_accel*dt));
+Ur_hat_plus = Ur_hat_prev + KUr*(Ur_mea - (Ur_hat_prev));
 Ul_hat_plus = Ul_hat_plus + Ul_accel*dt;
 Ur_hat_plus = Ur_hat_plus + Ur_accel*dt;
-Slip_l = 0; %should try to estimate these
+Slip_l = 0; %should try to estimate these (Use learned slip model)
 Slip_r = 0;
 Ul_eff_hat = (Ul_hat_plus - Slip_l);
 Ur_eff_hat = (Ur_hat_plus - Slip_r);
@@ -64,11 +64,12 @@ Ur_eff_hat = (Ur_hat_plus - Slip_r);
 %and 
   AxelLen = .62;
  omega_mea = meas(3);
- omega_est = (Ur_eff_hat - Ul_eff_hat)/AxelLen; 
+ %omega_model_est = (Ur_eff_hat - Ul_eff_hat)/AxelLen; 
  omega_est_prev = prev_est(6); %is this used?
- omega_est = omega_est + Kom*(omega_mea - omega_est);
- omega_est_plus = omega_est + (Ur_accel - Ul_accel)/AxelLen;
-% omega_est = omega_est + (Ur_eff_hat + (dUr)*dt - Ul_eff_hat - (dUl)*dt)/AxelLen 
+ omega_est = omega_est_prev + Kom*(omega_mea - omega_est_prev);
+ %omega_est_plus = omega_est + omega_model_est;
+ omega_est_plus = omega_est + dt*(Ur_accel - Ul_accel)/AxelLen;
+% omega_est_plus = omega_est + (Ur_eff_hat + (dUr)*dt - Ul_eff_hat - (dUl)*dt)/AxelLen 
 
  theta_mea = meas(6);
  theta_est = prev_est(3);
@@ -91,11 +92,11 @@ rot_est = [cos(omega_est_plus*dt), -sin(omega_est_plus*dt);
            sin(omega_est_plus*dt),  cos(omega_est_plus*dt)];
        
 deltaPos_est = rot_est*[0;-R_est] + [0;R_est]; %local coord
+%TODO ^ add side disturbance velocity from slip model to local y
 wrot = [cos(theta_est), -sin(theta_est);
         sin(theta_est),  cos(theta_est)];
 deltaPosW_est = wrot*deltaPos_est;
 
-%TODO
 %x and y then:
 dx_mea = deltaPosW_est(1)/dt; %is this ok? treating as measurement?
 dy_mea = deltaPosW_est(2)/dt;
@@ -105,7 +106,8 @@ dy_mea = deltaPosW_est(2)/dt;
  dx_est = dx_est + Kdx*(dx_mea - dx_est);
  dy_est = dy_est + Kdy*(dy_mea - dy_est);
  d2x_est = meas(1); %dont have model?
- d2y_est = meas(2); %TODO do from model, you cann... w/ wheel accel_est and theta_est
+ d2y_est = meas(2); 
+ %TODO ^ do from model, w/ wheel accel_est and theta_est
  dx_est = dx_est + d2x_est*dt;
  dy_est = dy_est + d2y_est*dt;
  

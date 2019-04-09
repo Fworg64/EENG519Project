@@ -2,9 +2,15 @@ axel_len = .62;
 %dt = .02;
 %time_to_solve = 0:dt:10;
 delta_time = .02;
-time_to_solve = [0, 10];
+time_to_solve = [0:delta_time:10];
+left_cmd = .5 - .5*exp(-4*time_to_solve);
+right_cmd = .2 - .2*exp(-4*time_to_solve);%sin(time_to_solve);
+left_wheel_cmd_vels  = [time_to_solve' , left_cmd'];
+right_wheel_cmd_vels = [time_to_solve' ,right_cmd'];
+
+
 GGG = simset('Solver', 'ode4', 'FixedStep', delta_time)
-sim('robotdynamic_simulink.slx', time_to_solve, GGG)
+sim('robotdynamic_simulink.slx', [0,time_to_solve(end)], GGG)
 
 %figure();
 %subplot(2,1,1);
@@ -16,16 +22,16 @@ sim('robotdynamic_simulink.slx', time_to_solve, GGG)
 
 %TODO add IMU offset and transform from local to global coord
 %add noise to measurements
-IMUx_variance = .1;
-IMUy_variance = .1;
-IMUomega_variance = .1;
+IMUx_variance = .001;
+IMUy_variance = .001;
+IMUomega_variance = .08;
 
 POSx_variance = .1;
 POSy_variance = .1;
 POStheta_variance = .1;
 
-Ul_read_variance = .00;
-Ur_read_variance = .00;
+Ul_read_variance = .002;
+Ur_read_variance = .002;
 
 
 time_len = size(measurements.Data);
@@ -33,7 +39,7 @@ Ul_cmd_rec = measurements.Data(:,1); %know input exactly
 Ur_cmd_rec = measurements.Data(:,2);
 
 d2x_rec = measurements.Data(:,3) + IMUx_variance * randn(time_len(1), 1);
-d2y_rec = measurements.Data(:,4) + IMUx_variance * randn(time_len(1), 1);
+d2y_rec = measurements.Data(:,4) + IMUy_variance * randn(time_len(1), 1);
 omega_rec = measurements.Data(:,5) + IMUomega_variance*randn(time_len(1), 1);
 
 x_rec = measurements.Data(:,6) + POSx_variance *  randn(time_len(1), 1);
@@ -88,7 +94,14 @@ legend('x_{mea}', 'y_{mea}', 'th_{mea}', 'om_{mea}',...
        'dx_{est}', 'dy_{est}',...
        'x_{tru}', 'y_{tru}', 'th_{tru}');
 
-
+figure();
+hold on;
+plot(measurements.Time, Ul_read_rec, '*', 'MarkerSize', 1,'MarkerFaceColor',[.2 .4 .6])
+plot(measurements.Time, Ur_read_rec, '*', 'MarkerSize', 1,'MarkerFaceColor',[.6 .2 .4])
+plot(measurements.Time, new_est_rec(7,:), '--', 'MarkerFaceColor',[.2 .4 .6])
+plot(measurements.Time, new_est_rec(8,:), '--', 'MarkerFaceColor',[.6 .2 .4])
+plot(measurements.Time, delta_accum.Data(:, 4), '-', 'MarkerFaceColor',[.2 .4 .6])
+plot(measurements.Time, delta_accum.Data(:, 5), '-', 'MarkerFaceColor',[.6 .2 .4])
 
 %plot new_est vs time.
 
