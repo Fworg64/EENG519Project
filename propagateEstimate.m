@@ -5,7 +5,8 @@ function state_estimate = propagateEstimate(inputs, prev_est, meas, dt)
 %  [x;  y;  theta;
 %   dx; dy; omega;
 %   Ul_act; Ur_act;
-%   Slip_l; Slip_r]
+%   Slip_l; Slip_r;
+%   d2x;    d2y];
 % and the measurement vector: 
 %  [d2x; d2y; omega;
 %   x;     y; theta;
@@ -26,14 +27,16 @@ function state_estimate = propagateEstimate(inputs, prev_est, meas, dt)
 % slip_est   = ? comes from slip model? actual - effective
 
 %K=0;
-Kx = .2;
-Ky = .2;
+Kx = .051;
+Ky = .051;
 Kth = .2;%0;%.8;
 Kdx = .8;
 Kdy = .8;
 Kom = .8;
-KUl = .8;
-KUr = .8;
+KUl = .4;
+KUr = .4;
+Kd2x = .5;
+Kd2y = .5;
 %KSl = .5;
 %KSr = .5;
 
@@ -50,6 +53,8 @@ Ul_accel = (Ul - prev_est(7))/dt;%should use center(or forward) difference of in
 Ur_accel = (Ur - prev_est(8))/dt;% using back difference for now
 Ul_accel = max(-.4, min(Ul_accel, .4)); %clamp for now too
 Ur_accel = max(-.4, min(Ur_accel, .4));
+prev_Ul_accel = .9*Ul_accel;
+prev_Ur_accel = .9*Ur_accel;
 
 Ul_mea = meas(7);
 Ur_mea = meas(8);%                          \/ is this right?
@@ -73,17 +78,17 @@ Ur_eff_hat = (Ur_hat_plus - Slip_r);
  omega_mea = meas(3);
  %omega_model_est = (Ur_eff_hat - Ul_eff_hat)/AxelLen; 
  omega_est_prev = prev_est(6); %is this used?
- omega_est = omega_est_prev + Kom*(omega_mea - omega_est_prev);
+ omega_est = omega_est_prev + Kom*(omega_mea - (omega_est_prev + dt*(Ur_accel - Ul_accel)/AxelLen));
  %omega_est_plus = omega_est + omega_model_est;
  omega_est_plus = omega_est + dt*(Ur_accel - Ul_accel)/AxelLen;
 % omega_est_plus = omega_est + (Ur_eff_hat + (dUr)*dt - Ul_eff_hat - (dUl)*dt)/AxelLen 
 
  theta_mea = meas(6);
  theta_est = prev_est(3);
- theta_est = theta_est + Kth*(angleDiff(theta_mea,theta_est));
- theta_est = theta_est + omega_est_plus*dt;
+ theta_est = theta_est + Kth*(angleDiff(theta_mea,theta_est + omega_est_plus*dt));
+ theta_est = theta_est + omega_est_plus*dt; %theta_est_plus
  theta_est = angleDiff(theta_est,0);
-% ^^ need care for angle reacharound
+% ^^ need care for angle wrap-around
 
 %dx,dy are local dx,dy (from wheel vels) transformed by theta
 %need instant turn radius, world rot mat, then dPos:
@@ -105,32 +110,43 @@ wrot = [cos(theta_est), -sin(theta_est);
 deltaPosW_est = wrot*deltaPos_est;
 
 %x and y then:
-dx_mea = deltaPosW_est(1)/dt; %is this ok? treating as measurement?
-dy_mea = deltaPosW_est(2)/dt;
+
+ d2x_est = prev_est(9);
+ d2y_est = prev_est(10);
+ d2x_mea = meas(1);
+ d2y_mea = meas(2);
+ x_accel_expected_increase = cos(theta_est)*dt*.5*((Ul_accel - prev_Ul_accel)  +(Ur_accel - prev_Ur_accel));
+ y_accel_expected_increase = sin(theta_est)*dt*.5*((Ul_accel - prev_Ul_accel)  +(Ur_accel - prev_Ur_accel));
+ d2x_est = d2x_est + Kd2x*(d2x_mea - (d2x_est + x_accel_expected_increase)); %measurement update
+ d2y_est = d2y_est + Kd2y*(d2y_mea - (d2y_est + y_accel_expected_increase)); %measurement update
+ d2x_est_plus = d2x_est + x_accel_expected_increase; %time update
+ d2y_est_plus = d2y_est + y_accel_expected_increase; %time update
+ 
+ dx_mea = deltaPosW_est(1)/dt; %is this ok? treating as measurement?
+ dy_mea = deltaPosW_est(2)/dt;
  dx_est = prev_est(4);
  dy_est = prev_est(5);
  %we dont have a true dx_mea or dy_mea?
- dx_est = dx_est + Kdx*(dx_mea - dx_est); %need to make this plus correct
- dy_est = dy_est + Kdy*(dy_mea - dy_est);
- d2x_est = meas(1); %dont have model?
- d2y_est = meas(2); 
- %TODO ^ do from model, w/ wheel accel_est and theta_est
- dx_est = dx_est + d2x_est*dt;
- dy_est = dy_est + d2y_est*dt;
+ dx_est = dx_est + Kdx*(dx_mea - (dx_est + d2x_est_plus*dt));
+ dy_est = dy_est + Kdy*(dy_mea - (dy_est + d2y_est_plus*dt));
+
+ dx_est = dx_est + d2x_est_plus*dt;
+ dy_est = dy_est + d2y_est_plus*dt;
  
  x_mea = meas(4);
  y_mea = meas(5);
-x_est = prev_est(1);
-y_est = prev_est(2);
- x_est = x_est + Kx*(x_mea - x_est);
+ x_est = prev_est(1);
+ y_est = prev_est(2);
+ x_est = x_est + Kx*(x_mea - (x_est + dx_est*dt));
  x_est = x_est + dx_est*dt;
- y_est = y_est + Ky*(y_mea - y_est);
+ y_est = y_est + Ky*(y_mea - (y_est + dy_est*dt));
  y_est = y_est + dy_est*dt;
  
  state_estimate = [x_est;  y_est;  theta_est;
                    dx_est; dy_est; omega_est_plus;
                    Ul_hat_plus;  Ur_hat_plus;
-                   Slip_l; Slip_r];
+                   Slip_l; Slip_r;
+                   d2x_est_plus;d2y_est_plus];
  
 % similar for y
 

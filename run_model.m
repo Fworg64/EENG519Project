@@ -55,7 +55,7 @@ Ur_read_rec = measurements.Data(:,10) + Ur_read_variance * randn(time_len(1),1);
 %recursivly build estimate of true states x, y, theta, dx, dy, omega,
 %and effective Ul, Ur (wheel velocity - slip)
 
- new_est_rec = zeros(10, time_len(1));
+ new_est_rec = zeros(12, time_len(1));
 x0  = 0;  y0 = 0; th0 = 0;
 dx0 = 0; dy0 = 0; om0 = 0;
 Ul0 = 0; Ur0 = 0;
