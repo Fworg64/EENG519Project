@@ -37,6 +37,9 @@ KUr = .8;
 %KSl = .5;
 %KSr = .5;
 
+%plus puts you forward in time, right before next measurement
+%review MAP estimate lecture
+%receding horizon
 %for now, slip_est = 0
 Ul = inputs(1); %known (what we asked the wheels to do)
 Ur = inputs(2); %known
@@ -49,11 +52,15 @@ Ul_accel = max(-.4, min(Ul_accel, .4)); %clamp for now too
 Ur_accel = max(-.4, min(Ur_accel, .4));
 
 Ul_mea = meas(7);
-Ur_mea = meas(8);
-Ul_hat_plus = Ul_hat_prev + KUl*(Ul_mea - (Ul_hat_prev)); 
-Ur_hat_plus = Ur_hat_prev + KUr*(Ur_mea - (Ur_hat_prev));
-Ul_hat_plus = Ul_hat_plus + Ul_accel*dt;
-Ur_hat_plus = Ur_hat_plus + Ur_accel*dt;
+Ur_mea = meas(8);%                          \/ is this right?
+% Ul_hat_plus = Ul_hat_prev + KUl*(Ul_mea - (Ul_hat_prev)); %measurement update
+% Ur_hat_plus = Ur_hat_prev + KUr*(Ur_mea - (Ur_hat_prev)); %
+% Ul_hat_plus = Ul_hat_plus + Ul_accel*dt; %time update
+% Ur_hat_plus = Ur_hat_plus + Ur_accel*dt;
+Ul_hat = Ul_hat_prev + KUl*(Ul_mea - (Ul_hat_prev + Ul_accel*dt)); %measurement update
+Ur_hat = Ur_hat_prev + KUr*(Ur_mea - (Ur_hat_prev + Ur_accel*dt)); %
+Ul_hat_plus = Ul_hat + Ul_accel*dt; %time update
+Ur_hat_plus = Ur_hat + Ur_accel*dt;
 Slip_l = 0; %should try to estimate these (Use learned slip model)
 Slip_r = 0;
 Ul_eff_hat = (Ul_hat_plus - Slip_l);
@@ -103,7 +110,7 @@ dy_mea = deltaPosW_est(2)/dt;
  dx_est = prev_est(4);
  dy_est = prev_est(5);
  %we dont have a true dx_mea or dy_mea?
- dx_est = dx_est + Kdx*(dx_mea - dx_est);
+ dx_est = dx_est + Kdx*(dx_mea - dx_est); %need to make this plus correct
  dy_est = dy_est + Kdy*(dy_mea - dy_est);
  d2x_est = meas(1); %dont have model?
  d2y_est = meas(2); 
