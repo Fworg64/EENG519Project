@@ -1,3 +1,4 @@
+rng(1776)
 axel_len = .62;
 %dt = .02;
 %time_to_solve = 0:dt:10;
@@ -5,8 +6,19 @@ delta_time = .02;
 time_to_solve = [0:delta_time:10];
 left_cmd = .5 - .5*exp(-2*time_to_solve);
 right_cmd = .2 - .2*exp(-2*time_to_solve);%sin(time_to_solve);
-left_wheel_cmd_vels  = [time_to_solve' , left_cmd'];
-right_wheel_cmd_vels = [time_to_solve' ,right_cmd'];
+
+%send commands through lead compensator
+[A, B, C, D] = tf2ss([1,4],[1,20]); %move pole at -4 to -20
+c2d(ss(A,B,C,D), .02)
+state = [0;0];
+output_record = zeros(2,length(time_to_solve));
+for index = 1:length(time_to_solve)
+    state = .6703 * state + .01648 * [left_cmd(index);right_cmd(index)];
+    output_record(:,index) = 5*(-16*state + 1*[left_cmd(index);right_cmd(index)]);
+end
+%use lead compensated commands on system
+left_wheel_cmd_vels  = [time_to_solve' , output_record(1,:)'];%left_cmd']; %packaged for simulink
+right_wheel_cmd_vels = [time_to_solve' , output_record(2,:)'];%right_cmd'];
 
 
 GGG = simset('Solver', 'ode4', 'FixedStep', delta_time)
@@ -35,8 +47,9 @@ Ur_read_variance = .002;
 
 
 time_len = size(measurements.Data);
-Ul_cmd_rec = measurements.Data(:,1); %know input exactly
-Ur_cmd_rec = measurements.Data(:,2);
+%give estimator input commands as planned
+Ul_cmd_rec = left_cmd';%measurements.Data(:,1); %know input exactly
+Ur_cmd_rec = right_cmd';%measurements.Data(:,2);
 
 d2x_rec = measurements.Data(:,3) + IMUx_variance * randn(time_len(1), 1);
 d2y_rec = measurements.Data(:,4) + IMUy_variance * randn(time_len(1), 1);

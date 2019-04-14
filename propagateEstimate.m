@@ -122,7 +122,7 @@ deltaPosW_est = wrot*deltaPos_est;
  d2x_est_plus = d2x_est + x_accel_expected_increase; %time update
  d2y_est_plus = d2y_est + y_accel_expected_increase; %time update
  
- dx_mea = deltaPosW_est(1)/dt; %is this ok? treating as measurement?
+ dx_mea = deltaPosW_est(1)/dt; %this should come from sensor data
  dy_mea = deltaPosW_est(2)/dt;
  dx_est = prev_est(4);
  dy_est = prev_est(5);
@@ -137,9 +137,9 @@ deltaPosW_est = wrot*deltaPos_est;
  y_mea = meas(5);
  x_est = prev_est(1);
  y_est = prev_est(2);
- x_est = x_est + Kx*(x_mea - (x_est + dx_est*dt));
+ x_est = x_est + Kx*(x_mea - (x_est + deltaPosW_est(1)));
  x_est = x_est + dx_est*dt;
- y_est = y_est + Ky*(y_mea - (y_est + dy_est*dt));
+ y_est = y_est + Ky*(y_mea - (y_est + deltaPosW_est(2)));
  y_est = y_est + dy_est*dt;
  
  state_estimate = [x_est;  y_est;  theta_est;
