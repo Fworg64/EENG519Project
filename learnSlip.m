@@ -3,7 +3,8 @@ function [alpha_seg] = learnSlip(Uls,Urs, vals, type)
 % min ||vals - [
 % Solves for alpha vector of general kinematic slip model. 
 input_speed = .5*(Uls + Urs);
-input_omega = Urs - Uls; %forget about axel len?
+axel_len = .62; %axel len shows up as omega_alpha_omega
+input_omega = (Urs - Uls)/axel_len; 
 if (type == 'dx')
    input_omega = abs(input_omega);
    b = input_speed;

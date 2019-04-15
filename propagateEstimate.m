@@ -111,7 +111,8 @@ Ur_eff_hat = (Ur_hat_plus - Slip_r);
 %  rot = [cos(w*dt), -sin(w*dt);sin(w*dt),cos(w*dt)];
 %  dPos = rot*[0;-R] + [0;R];
 %so using our estimates:
- R_est = AxelLen/2 * (Ur_eff_hat + Ul_eff_hat) / (Ur_eff_hat - Ul_eff_hat);
+if (Ur_eff_hat - Ul_eff_hat > .01)
+R_est = AxelLen/2 * (Ur_eff_hat + Ul_eff_hat) / (Ur_eff_hat - Ul_eff_hat);
 %  ^^ Need care for zero point turns (Ur = Ul)
 %  rot_est: use omega_est * dt for w*dt
 
@@ -123,6 +124,9 @@ deltaPos_est = rot_est*[0;-R_est] + [0;R_est]; %local coord
 wrot = [cos(theta_est), -sin(theta_est);
         sin(theta_est),  cos(theta_est)];
 deltaPosW_est = wrot*deltaPos_est;
+else
+    deltaPosW_est = dt*.5*(Ul_eff_hat + Ur_eff_hat)*[cos(theta_est); sin(theta_est)];
+end
 
 %x and y then:
 

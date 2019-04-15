@@ -3,9 +3,18 @@ axel_len = .62;
 %dt = .02;
 %time_to_solve = 0:dt:10;
 delta_time = .02;
-time_to_solve = [0:delta_time:10];
-left_cmd = .5 - .5*exp(-2*time_to_solve);
-right_cmd = .2 - .2*exp(-2*time_to_solve);%sin(time_to_solve);
+time_to_solve = [0:delta_time:55];
+left_cmd = zeros(1,length(time_to_solve));
+right_cmd = zeros(1,length(time_to_solve));
+for index = 1:length(time_to_solve)
+    if (time_to_solve(index) < 4*2*pi) 
+      left_cmd(index) = .5*sin(1*time_to_solve(index));%.5 - .5*exp(-2*time_to_solve);
+      right_cmd(index) = .5*sin(.25*time_to_solve(index));%.2 - .2*exp(-2*time_to_solve);%sin(time_to_solve);
+    else
+      left_cmd(index) = .5*sin(.25*time_to_solve(index));%.5 - .5*exp(-2*time_to_solve);
+      right_cmd(index) = .5*sin(1*time_to_solve(index));%.2 - .2*exp(-2*time_to_solve);%sin(time_to_solve);
+    end
+end
 
 %send commands through lead compensator
 [A, B, C, D] = tf2ss([1,4],[1,20]); %move pole at -4 to -20
