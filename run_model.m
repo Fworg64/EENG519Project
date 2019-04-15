@@ -33,14 +33,16 @@ sim('robotdynamic_simulink.slx', [0,time_to_solve(end)], GGG)
 %legend('Ul_{cmd}', 'Ur_{cmd}', 'd2x', 'd2y', 'omega', 'x', 'y', 'theta', 'Ul_{read}', 'Ur_{read}')
 
 %TODO add IMU offset and transform from local to global coord
+%and add wandering IMU bias
 %add noise to measurements
-IMUx_variance = .001;
-IMUy_variance = .001;
-IMUomega_variance = .08;
+%maybe this is std. dev instead
+IMUx_variance = .01;
+IMUy_variance = .01;
+IMUomega_variance = .01;
 
-POSx_variance = .1;
-POSy_variance = .1;
-POStheta_variance = .1;
+POSx_variance = .05;
+POSy_variance = .05;
+POStheta_variance = .05;
 
 Ul_read_variance = .002;
 Ur_read_variance = .002;
@@ -68,19 +70,35 @@ Ur_read_rec = measurements.Data(:,10) + Ur_read_variance * randn(time_len(1),1);
 %recursivly build estimate of true states x, y, theta, dx, dy, omega,
 %and effective Ul, Ur (wheel velocity - slip)
 
- new_est_rec = zeros(12, time_len(1));
+ new_est_rec = zeros(14, time_len(1));
 x0  = 0;  y0 = 0; th0 = 0;
 dx0 = 0; dy0 = 0; om0 = 0;
 Ul0 = 0; Ur0 = 0;
 Sl0 = 0; Sr0 = 0;
- new_est_prev = [x0, y0, th0, dx0, dy0, om0, Ul0, Ur0, Sl0, Sr0];
+d2x = 0; d2y = 0;
+bx  = 0;  by = 0;
+ new_est_prev = [x0, y0, th0, dx0, dy0, om0, Ul0, Ur0, Sl0, Sr0, d2x, d2y, bx, by];
+
+vel_window_size = 10;
+prev_mea_pos_imu = zeros(4, vel_window_size); %populate x0 here
+p_v_and_b_buff = zeros(6,vel_window_size); %[pos; velocity for begining of fit
+                                         %and imu offset
 for index = 1:time_len
   meas = [d2x_rec(index), d2y_rec(index), omega_rec(index),...
           x_rec(index),     y_rec(index), theta_rec(index),...
           Ul_read_rec(index), Ur_read_rec(index)];
+  %need to pop p0 and pass in to propagate
+  prev_mea_pos_imu(:,1:end-1) = prev_mea_pos_imu(:,2:end); %scoot for new data
+  prev_mea_pos_imu(:,end) = [new_est_prev(1);new_est_prev(2);
+                             new_est_prev(11); new_est_prev(12)];
   new_est_rec(:,index) = propagateEstimate([Ul_cmd_rec(index), Ur_cmd_rec(index)],...
-                                       new_est_prev, meas, delta_time);
+                                       new_est_prev, meas, delta_time,...
+                                       prev_mea_pos_imu, p_v_and_b_buff(:,1));
   new_est_prev = new_est_rec(:,index);
+  p_v_and_b_buff(:,1:end-1) = p_v_and_b_buff(:,2:end);
+  p_v_and_b_buff(:,end) = [new_est_prev(1);new_est_prev(2); %position
+                           new_est_prev(4);new_est_prev(5); %velocity
+                           new_est_prev(13);new_est_prev(14)]; %imu offset
 end
 
 %subplot(2,1,2)
@@ -98,13 +116,15 @@ plot(measurements.Time, new_est_rec(3,:), 'c--')
 plot(measurements.Time, new_est_rec(6,:), 'g--')
 plot(measurements.Time, new_est_rec(4,:), '--', 'MarkerFaceColor',[.2 .4 .6])
 plot(measurements.Time, new_est_rec(5,:), '--', 'MarkerFaceColor',[.6 .2 .4])
+plot(measurements.Time, new_est_rec(11,:), '--', 'MarkerFaceColor', [.4, .6, .6]);
+plot(measurements.Time, new_est_rec(12,:), '--', 'MarkerFaceColor', [.6, .6, .4]);
 plot(measurements.Time, delta_accum.Data(:, 1), 'b-')
 plot(measurements.Time, delta_accum.Data(:, 2), 'r-')
 plot(measurements.Time, delta_accum.Data(:, 3), 'c-')
 legend('x_{mea}', 'y_{mea}', 'th_{mea}', 'om_{mea}',...
        'd2x_{mea}', 'd2y_{mea}',...
        'x_{est}', 'y_{est}', 'th_{est}', 'om_{est}',...
-       'dx_{est}', 'dy_{est}',...
+       'dx_{est}', 'dy_{est}', 'd2x_{est}', 'd2y_{est}',...
        'x_{tru}', 'y_{tru}', 'th_{tru}');
 
 figure();
