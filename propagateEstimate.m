@@ -1,5 +1,5 @@
-function state_estimate = propagateEstimate(inputs, prev_est, meas, dt,...
-                                            prev_mea_pos_imu, p_v_and_b)
+function [state_estimate, new_xycov, new_d2xycov] = propagateEstimate(inputs, prev_est, meas, dt,...
+                                            prev_mea_pos_imu, p_v_and_b, xycov, d2xycov)
 %propagateEstimate
 % given the current inputs (wheel velocitiy commands): [Ul; Ur],
 % the previous estimate of the state:
@@ -43,14 +43,18 @@ function state_estimate = propagateEstimate(inputs, prev_est, meas, dt,...
 % slip_est   = ? comes from slip model? actual - effective
 
 %K=0;
-Kx = .051;
-Ky = .051;
-Kth = .2;%0;%.8;
+%Kx = .051;
+%Ky = .051;
+%x, y, d2x, d2y are non linear
+%xycov = diag([.1, .1, .02, .02])
+xyC = diag([1, 1, 0, 0]);
+
+Kth = .00196;%0;%.8;
 Kdx = .5;
 Kdy = .5;
-Kom = .5;
-KUl = .4;
-KUr = .4;
+Kom = .27;
+KUl = .2;
+KUr = .2;
 Kd2x = .5;
 Kd2y = .5;
 %KSl = .5;
@@ -131,14 +135,27 @@ end
 
 %x and y then:
 
+ % Use simplified dynamics for linearization (omega * dt is small)
+ % states are [x;y;Ul;Ur]
+ d2xyphi = dt*.5*[0, 0, cos(theta_est), cos(theta_est);
+               0, 0, sin(theta_est), sin(theta_est); zeros(2,4)];
+ d2xycov = d2xyphi * d2xycov * d2xyphi' + diag([.01^2, .01^2, 4*.001^2, 4*.001^2]);
+ %^^ the diagonal term is input disturbance (estimate error cov for wheel accel)
+ %^^ a small amount of d2x,d2y input disturbance is needed
+ d2xygains = d2xycov*xyC' / (xyC * d2xycov * xyC' + diag([.01^2, .01^2, 20, 20]));
+ %^^ the diagonal term is measurement noise, only x,y matter
+ %  (the wheels are not measured here.)
+ d2xycov = (eye(4,4) - d2xygains*xyC) * d2xycov;
+
  d2x_est = prev_est(11);
  d2y_est = prev_est(12);
  d2x_mea = meas(1);
  d2y_mea = meas(2);
  x_accel_expected_increase = cos(theta_est)*dt*.5*((Ul_accel - prev_Ul_accel)  +(Ur_accel - prev_Ur_accel));
  y_accel_expected_increase = sin(theta_est)*dt*.5*((Ul_accel - prev_Ul_accel)  +(Ur_accel - prev_Ur_accel));
- d2x_est = d2x_est + Kd2x*(d2x_mea - (d2x_est + x_accel_expected_increase)); %measurement update
- d2y_est = d2y_est + Kd2y*(d2y_mea - (d2y_est + y_accel_expected_increase)); %measurement update
+ %should we use the whole 2x2 gains mat?
+ d2x_est = d2x_est + d2xygains(1,1)*(d2x_mea - (d2x_est + x_accel_expected_increase)); %measurement update
+ d2y_est = d2y_est + d2xygains(2,2)*(d2y_mea - (d2y_est + y_accel_expected_increase)); %measurement update
  d2x_est_plus = d2x_est + x_accel_expected_increase; %time update
  d2y_est_plus = d2y_est + y_accel_expected_increase; %time update
  
@@ -178,13 +195,25 @@ end
  dx_est = dx_est + d2x_est_plus*dt; % deltaPosW_est(1)/dt;
  dy_est = dy_est + d2y_est_plus*dt; %  deltaPosW_est(2)/dt;
  
+ % Use simplified dynamics for linearization (omega * dt is small)
+ % states are [x;y;Ul;Ur]
+ xyphi = dt*.5*[0, 0, cos(theta_est), cos(theta_est);
+             0, 0, sin(theta_est), sin(theta_est); zeros(2,4)];
+ xycov = xyphi * xycov * xyphi' + diag([.01^2, .01^2, .001^2, .001^2]);
+ %^^ the diagonal term is input disturbance (estimate error cov for wheels)
+ %^^ a small amount of x,y input disturbance is needed
+ xygains = xycov*xyC' / (xyC * xycov * xyC' + diag([.05^2, .05^2, 20, 20]));
+ %^^ the diagonal term is measurement noise, only x,y matter
+ %  (the wheels are not measured here.)
+ xycov = (eye(4,4) - xygains*xyC) * xycov;
+
  x_mea = meas(4);
  y_mea = meas(5);
  x_est = prev_est(1);
  y_est = prev_est(2);
- x_est = x_est + Kx*(x_mea - (x_est + deltaPosW_est(1)));
- x_est = x_est + deltaPosW_est(1);
- y_est = y_est + Ky*(y_mea - (y_est + deltaPosW_est(2)));
+ x_est = x_est + xygains(1,1)*(x_mea - (x_est + deltaPosW_est(1)));
+ x_est = x_est + deltaPosW_est(1); %use true-er dynamics here
+ y_est = y_est + xygains(2,2)*(y_mea - (y_est + deltaPosW_est(2)));
  y_est = y_est + deltaPosW_est(2);
  
  state_estimate = [x_est;  y_est;  theta_est;
@@ -193,5 +222,8 @@ end
                    Slip_l; Slip_r;
                    d2x_est_plus;d2y_est_plus;
                    Bx;By;Ul_accel;Ur_accel];
+               
+ new_xycov = xycov;
+ new_d2xycov = d2xycov;
  
 end

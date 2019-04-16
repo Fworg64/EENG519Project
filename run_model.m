@@ -49,16 +49,16 @@ sim('robotdynamic_simulink.slx', [0,time_to_solve(end)], GGG)
 %and add wandering IMU bias
 %add noise to measurements
 %maybe this is std. dev instead
-IMUx_variance = .01;
-IMUy_variance = .01;
-IMUomega_variance = .01;
+IMUx_variance = .01^2;
+IMUy_variance = .01^2;
+IMUomega_variance = .01^2;
 
-POSx_variance = .05;
-POSy_variance = .05;
-POStheta_variance = .05;
+POSx_variance = .05^2;
+POSy_variance = .05^2;
+POStheta_variance = .05^2;
 
-Ul_read_variance = .002;
-Ur_read_variance = .002;
+Ul_read_variance = .02^2;
+Ur_read_variance = .02^2;
 
 
 time_len = size(measurements.Data);
@@ -66,15 +66,15 @@ time_len = size(measurements.Data);
 Ul_cmd_rec = left_cmd';%measurements.Data(:,1); %know input exactly
 Ur_cmd_rec = right_cmd';%measurements.Data(:,2);
 
-d2x_rec = measurements.Data(:,3) + IMUx_variance * randn(time_len(1), 1);
-d2y_rec = measurements.Data(:,4) + IMUy_variance * randn(time_len(1), 1);
-omega_rec = measurements.Data(:,5) + IMUomega_variance*randn(time_len(1), 1);
+d2x_rec = measurements.Data(:,3) + sqrt(IMUx_variance) * randn(time_len(1), 1);
+d2y_rec = measurements.Data(:,4) + sqrt(IMUy_variance) * randn(time_len(1), 1);
+omega_rec = measurements.Data(:,5) + sqrt(IMUomega_variance) *randn(time_len(1), 1);
 
-x_rec = measurements.Data(:,6) + POSx_variance *  randn(time_len(1), 1);
-y_rec = measurements.Data(:,7) + POSy_variance *  randn(time_len(1), 1);
-theta_rec = measurements.Data(:,8) + POStheta_variance *  randn(time_len(1), 1);
-Ul_read_rec = measurements.Data(:,9) + Ul_read_variance * randn(time_len(1), 1);
-Ur_read_rec = measurements.Data(:,10) + Ur_read_variance * randn(time_len(1),1);
+x_rec = measurements.Data(:,6) + sqrt(POSx_variance) *  randn(time_len(1), 1);
+y_rec = measurements.Data(:,7) + sqrt(POSy_variance) *  randn(time_len(1), 1);
+theta_rec = measurements.Data(:,8)   + sqrt(POStheta_variance) * randn(time_len(1), 1);
+Ul_read_rec = measurements.Data(:,9)  + sqrt(Ul_read_variance) * randn(time_len(1), 1);
+Ur_read_rec = measurements.Data(:,10) + sqrt(Ur_read_variance) * randn(time_len(1),1);
 
 
 %plot(delta_accum.Time, delta_accum.Data(:,3))
@@ -97,6 +97,9 @@ vel_window_size = 3;
 prev_mea_pos_imu = zeros(4, vel_window_size); %populate x0 here
 p_v_and_b_buff = zeros(6,vel_window_size); %[pos; velocity for begining of fit
                                          %and imu offset
+xy_cov = diag([.1^2, .1^2, .02^2, .02^2]);
+d2xy_cov = diag([.01^2, .01^2, .02^2, .02^2]);
+
 for index = 1:time_len
   meas = [d2x_rec(index), d2y_rec(index), omega_rec(index),...
           x_rec(index),     y_rec(index), theta_rec(index),...
@@ -105,9 +108,9 @@ for index = 1:time_len
   prev_mea_pos_imu(:,1:end-1) = prev_mea_pos_imu(:,2:end); %scoot for new data
   prev_mea_pos_imu(:,end) = [new_est_prev(1);new_est_prev(2);
                              new_est_prev(11); new_est_prev(12)];
-  new_est_rec(:,index) = propagateEstimate([Ul_cmd_rec(index), Ur_cmd_rec(index)],...
+  [new_est_rec(:,index), xy_cov, d2xy_cov] = propagateEstimate([Ul_cmd_rec(index), Ur_cmd_rec(index)],...
                                        new_est_prev, meas, delta_time,...
-                                       prev_mea_pos_imu, p_v_and_b_buff(:,1));
+                                       prev_mea_pos_imu, p_v_and_b_buff(:,1), xy_cov, d2xy_cov);
   new_est_prev = new_est_rec(:,index);
   p_v_and_b_buff(:,1:end-1) = p_v_and_b_buff(:,2:end);
   p_v_and_b_buff(:,end) = [new_est_prev(1);new_est_prev(2); %position
