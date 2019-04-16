@@ -1,8 +1,10 @@
-begining_time = 100
+begining_time = 1
 %project dx,dy onto forward vector for speed
 %     f_vec = [cos(theta);sin(theta)]
 % orthogonal vector for disturbance
 %robot_theta = new_est_rec(3,begining_time:end);
+%run after run_model.m, learns the slip model of the system from sensor and
+%command history data
 local_speeds = 0;
 local_dist = 0;
 for index = begining_time:length(x_rec)
@@ -23,7 +25,12 @@ alpha_d = learnSlip(Uls, Urs,...
                     local_dist, 'dy')
 alpha_om = learnSlip(Uls, Urs,...
                     local_omega, 'om')
-                
+           
+if (false)
+    btimes = [];
+    alpha_d_rec = [];
+    alpha_om_rec = [];
+end
                 
 %lazy record
 btimes = [btimes, begining_time];

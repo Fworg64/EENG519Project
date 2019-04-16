@@ -8,7 +8,8 @@ function state_estimate = propagateEstimate(inputs, prev_est, meas, dt,...
 %   Ul_act; Ur_act;
 %   Slip_l; Slip_r;
 %   d2x;    d2y;
-%    Bx;     By;];
+%    Bx;     By;
+%   Ul_acc; Ur_acc];
 % and the measurement vector: 
 %  [d2x; d2y; omega;
 %   x;     y; theta;
@@ -68,8 +69,8 @@ Ul_accel = (Ul - prev_est(7))/dt;%should use center(or forward) difference of in
 Ur_accel = (Ur - prev_est(8))/dt;% using back difference for now
 Ul_accel = max(-.4, min(Ul_accel, .4)); %clamp for now too
 Ur_accel = max(-.4, min(Ur_accel, .4));
-prev_Ul_accel = .9*Ul_accel;
-prev_Ur_accel = .9*Ur_accel;
+prev_Ul_accel = prev_est(15);
+prev_Ur_accel = prev_est(16);
 
 Ul_mea = meas(7);
 Ur_mea = meas(8);%                          \/ is this right?
@@ -191,11 +192,6 @@ end
                    Ul_hat_plus;  Ur_hat_plus;
                    Slip_l; Slip_r;
                    d2x_est_plus;d2y_est_plus;
-                   Bx;By];
+                   Bx;By;Ul_accel;Ur_accel];
  
-% similar for y
-
-
-
-
 end

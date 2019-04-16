@@ -3,16 +3,20 @@ axel_len = .62;
 %dt = .02;
 %time_to_solve = 0:dt:10;
 delta_time = .02;
-time_to_solve = [0:delta_time:55];
+total_time = 20;%480;
+time_to_solve = [0:delta_time:total_time];
 left_cmd = zeros(1,length(time_to_solve));
 right_cmd = zeros(1,length(time_to_solve));
+period_1 = 10;%total_time / 2;
+period_2 = 5;%period_1 / 12;
+
 for index = 1:length(time_to_solve)
-    if (time_to_solve(index) < 4*2*pi) 
-      left_cmd(index) = .5*sin(1*time_to_solve(index));%.5 - .5*exp(-2*time_to_solve);
-      right_cmd(index) = .5*sin(.25*time_to_solve(index));%.2 - .2*exp(-2*time_to_solve);%sin(time_to_solve);
+    if (time_to_solve(index) < period_1) 
+      left_cmd(index) = .5*sin((2*pi / period_2)*time_to_solve(index));%.5 - .5*exp(-2*time_to_solve);
+      right_cmd(index) = .5*sin((2*pi / period_1)*time_to_solve(index));%.2 - .2*exp(-2*time_to_solve);%sin(time_to_solve);
     else
-      left_cmd(index) = .5*sin(.25*time_to_solve(index));%.5 - .5*exp(-2*time_to_solve);
-      right_cmd(index) = .5*sin(1*time_to_solve(index));%.2 - .2*exp(-2*time_to_solve);%sin(time_to_solve);
+      left_cmd(index) = .5*sin((2*pi / period_1)*time_to_solve(index));%.5 - .5*exp(-2*time_to_solve);
+      right_cmd(index) = .5*sin((2*pi / period_2)*time_to_solve(index));%.2 - .2*exp(-2*time_to_solve);%sin(time_to_solve);
     end
 end
 
@@ -79,16 +83,17 @@ Ur_read_rec = measurements.Data(:,10) + Ur_read_variance * randn(time_len(1),1);
 %recursivly build estimate of true states x, y, theta, dx, dy, omega,
 %and effective Ul, Ur (wheel velocity - slip)
 
- new_est_rec = zeros(14, time_len(1));
+ new_est_rec = zeros(16, time_len(1));
 x0  = 0;  y0 = 0; th0 = 0;
 dx0 = 0; dy0 = 0; om0 = 0;
 Ul0 = 0; Ur0 = 0;
 Sl0 = 0; Sr0 = 0;
 d2x = 0; d2y = 0;
 bx  = 0;  by = 0;
- new_est_prev = [x0, y0, th0, dx0, dy0, om0, Ul0, Ur0, Sl0, Sr0, d2x, d2y, bx, by];
+Ul_acc = 0; Ur_acc = 0;
+ new_est_prev = [x0, y0, th0, dx0, dy0, om0, Ul0, Ur0, Sl0, Sr0, d2x, d2y, bx, by,Ul_acc, Ur_acc ];
 
-vel_window_size = 10;
+vel_window_size = 3;
 prev_mea_pos_imu = zeros(4, vel_window_size); %populate x0 here
 p_v_and_b_buff = zeros(6,vel_window_size); %[pos; velocity for begining of fit
                                          %and imu offset
