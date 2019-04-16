@@ -154,6 +154,9 @@ plot(measurements.Time, delta_accum.Data(:, 4), '-', 'MarkerFaceColor',[.2 .4 .6
 plot(measurements.Time, delta_accum.Data(:, 5), '-', 'MarkerFaceColor',[.6 .2 .4])
 plot(measurements.Time, left_cmd, 'd', 'MarkerFaceColor',[.9 .4 .6])
 plot(measurements.Time, right_cmd, 'd', 'MarkerFaceColor',[.9 .6 .4])
+legend('Ul_{mea}', 'Ur_{mea}', 'Ul_{est}', 'Ur_{est}', 'Ul_{tru}','Ur_{tru}',...
+       'Ul_{cmd}', 'Ur_{cmd}');
+title('Wheel Velocities');
 
 %plot new_est vs time.
 

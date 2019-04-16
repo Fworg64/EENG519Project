@@ -202,7 +202,7 @@ end
  xycov = xyphi * xycov * xyphi' + diag([.01^2, .01^2, .001^2, .001^2]);
  %^^ the diagonal term is input disturbance (estimate error cov for wheels)
  %^^ a small amount of x,y input disturbance is needed
- xygains = xycov*xyC' / (xyC * xycov * xyC' + diag([.05^2, .05^2, 20, 20]));
+ xygains = xycov*xyC' / (xyC *xycov* xyC' + diag([.05^2, .05^2, 20, 20]));
  %^^ the diagonal term is measurement noise, only x,y matter
  %  (the wheels are not measured here.)
  xycov = (eye(4,4) - xygains*xyC) * xycov;
