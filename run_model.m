@@ -3,23 +3,24 @@ axel_len = .62;
 %dt = .02;
 %time_to_solve = 0:dt:10;
 delta_time = .02;
-total_time = 20;%480;
+total_time = 10;%480;
 time_to_solve = [0:delta_time:total_time];
 left_cmd = zeros(1,length(time_to_solve));
 right_cmd = zeros(1,length(time_to_solve));
 period_1 = 10;%total_time / 2;
 period_2 = 5;%period_1 / 12;
 
-for index = 1:length(time_to_solve)
-    if (time_to_solve(index) < period_1) 
-      left_cmd(index) = .5*sin((2*pi / period_2)*time_to_solve(index));%.5 - .5*exp(-2*time_to_solve);
-      right_cmd(index) = .5*sin((2*pi / period_1)*time_to_solve(index));%.2 - .2*exp(-2*time_to_solve);%sin(time_to_solve);
-    else
-      left_cmd(index) = .5*sin((2*pi / period_1)*time_to_solve(index));%.5 - .5*exp(-2*time_to_solve);
-      right_cmd(index) = .5*sin((2*pi / period_2)*time_to_solve(index));%.2 - .2*exp(-2*time_to_solve);%sin(time_to_solve);
-    end
-end
+% for index = 1:length(time_to_solve)
+%     if (time_to_solve(index) < period_1) 
+%       left_cmd(index) = .5*sin((2*pi / period_2)*time_to_solve(index));%.5 - .5*exp(-2*time_to_solve);
+%       right_cmd(index) = .5*sin((2*pi / period_1)*time_to_solve(index));%.2 - .2*exp(-2*time_to_solve);%sin(time_to_solve);
+%     else
+%       left_cmd(index) = .5*sin((2*pi / period_1)*time_to_solve(index));%.5 - .5*exp(-2*time_to_solve);
+%       right_cmd(index) = .5*sin((2*pi / period_2)*time_to_solve(index));%.2 - .2*exp(-2*time_to_solve);%sin(time_to_solve);
+%     end
+% end
 
+[left_cmd , right_cmd] = genWheelTraj(time_to_solve);
 %send commands through lead compensator
 [A, B, C, D] = tf2ss([1,4],[1,20]); %move pole at -4 to -20
 c2d(ss(A,B,C,D), .02)
