@@ -18,6 +18,7 @@ dy = (AxelLen/2)*(Ur + Ul)/(Ur - Ul) * (sin(theta)*sin(omega)...
                                  - cos(theta)*cos(omega) + cos(theta));
                              
 %thankfully:
+%omega = 2*(Ur - Ul) / AxelLen
 %alpha;% = (dUr - dUl)/AxelLen;
 %beta;% = (d2Ur - d2Ul)/AxelLen;
 
@@ -47,15 +48,15 @@ phi = [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0; %dx = dx
        0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0; %dth = om
        0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0; %ddx = d2x
        0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0; %ddy = d2y
-       0, 0, 0, 0, 0, 0, 0, 0, 0, 0,-1, 1; %1/axel len really
+       0, 0, 0, 0, 0, 0, 0, 0, 0, 0,-2, 2; %1/axel len really
        0, 0, diff(d3x, theta), 0, 0, diff(d3x,omega), ...
-       0, 0, diff(d3x, Ul), diff(d3x, Ur), diff(d3x, dUl),...
-       diff(d3x, dUr); %d2x
+       0, 0, diff(d3x, Ul), diff(d3x, Ur),...
+             diff(d3x, dUl),diff(d3x, dUr); %d2x
        0, 0, diff(d3y, theta), 0, 0, diff(d3y,omega), ...
-       0, 0, diff(d3y, Ul), diff(d3y, Ur), diff(d3y, dUl),...
-       diff(d3y, dUr); %d2y
-       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0; %Ul
-       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1; %Ur
+       0, 0, diff(d3y, Ul), diff(d3y, Ur),...
+             diff(d3y, dUl),diff(d3y, dUr); %d2y
+       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0; %Ul %make it slow down a bit
+       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1; %Ur %on its own
        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0; %dUl
        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];%dUr
  gamma = [0, 0; %x
@@ -86,56 +87,78 @@ phi = [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0; %dx = dx
                    .1, .1].^2);
                
 delta_time = .02;
-total_time = 10;%480;
+total_time = 5.3;%480;
 time_to_solve = [0:delta_time:total_time];
                
- x = [0; 0; 0;...   x,  y, theta
-      0; 0; 0;...  dx, dy, omega
+ x = [0; 0; 1;...   x,  y, theta
+      0; 0; -.1;...  dx, dy, omega
       0; 0; ...   d2x, d2y
-      0; 0; ...    Ul,  Ur
+      .5; .1; ...    Ul,  Ur
       0; 0];...   dUl, dUr
- U = [cos(time_to_solve)', sin(1.2*time_to_solve)'];
+ left_u = @(t) ((t <= 1.0).*(2*(t <= .5) - 1).*2.8.*sin(2*2*pi*t))'
+ U = [0*left_u(time_to_solve), 0*2*left_u(time_to_solve)];
 
+ num_runs = length(time_to_solve);
+ x_rec = zeros(length(x),num_runs); 
                
- for index = 1:3
+ for index = 1:num_runs
      [phi_k, gamma_k] = robust_phi_state(x, U(index,:), phi_state, gamma_state)
-     x = x + phi_k*x + gamma_k*U(index,:)';
+     %dt_phi = expm(phi_k * delta_time);
+     %dt_gamma = phi_k \ (dt_phi - eye(12))*gamma_k;
+     p = ss(phi_k, gamma_k, eye(12), zeros(12,2));
+     pd = c2d(p, delta_time);
+     x = pd.A*x + pd.B*U(index,:)';
+     x_rec(:,index) = x;
  end
  
+ figure();
+ subplot(2, 1, 1);
+ plot( time_to_solve,x_rec(1, :), time_to_solve, x_rec(2, :),...
+       time_to_solve,x_rec(4, :), time_to_solve, x_rec(5, :), ...
+       time_to_solve,x_rec(7, :), time_to_solve, x_rec(8, :));
+ legend('x', 'y',  'dx', 'dy', 'd2x', 'd2y');
+ subplot(2, 1, 2);
+ plot(time_to_solve, x_rec(3, :), time_to_solve, x_rec(6, :), ...
+      time_to_solve, x_rec(9, :), time_to_solve, x_rec(10,:), ...
+      time_to_solve, x_rec(11,:), time_to_solve, x_rec(12,:));
+ legend('theta','omega','Ul', 'Ur', 'dUl', 'dUr');
  function [phi, gamma] = robust_phi_state(x, u, phi_func, gamma_func)
-   if (abs(u(1) - u(2)) > .001) && (abs(x(9) - x(10)) > .001) && (abs(x(11) - x(12)) > .001)
-       phi = phi_func(x(9), x(10), u(1), u(2), x(11), x(12), x(6), x(3));
-       gamma = gamma_func(x(9), x(10), x(6), x(3));
-   else
-phi = [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0; %dx = dx
-       0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0; %dy = dy
-       0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0; %dth = om
-       0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0; %ddx = d2x
-       0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0; %ddy = d2y
-       0, 0, 0, 0, 0, 0, 0, 0, 0, 0,-1, 1; %1/axel len really
-       0, 0, 0, 0, 0, 0, ...
-       0, 0, 0, 0, 0,...
-       0; %d2x
-       0, 0, 0, 0, 0, 0, ...
-       0, 0, 0,0,0,...
-       0; %d2y
-       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0;
-       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1;
-       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
-       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
- gamma = [0, 0; %x
-          0, 0; %y
-          0, 0; %theta
-          0, 0; %dx
-          0, 0; %dy
-          0, 0; %omega
-          .5*cos(x(3)), .5*cos(x(3)); %d2x, is this correct?
-          .5*sin(x(3)), .5*sin(x(3)); %d2y
-          0, 0; %Ul
-          0, 0; %Ur
-          1, 0; %dUl
-          0, 1]; %dUr   
-   end
+ vel_adj = x(9);  
+ if (abs(x(9) - x(10)) < .01) 
+       vel_adj = x(9) + .02;
+ end
+       phi = phi_func(vel_adj, x(10), u(1), u(2), x(11), x(12), x(6), x(3));
+       gamma = gamma_func(vel_adj, x(10), x(6), x(3));
+       
+% phi = [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0; %dx = dx
+%        0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0; %dy = dy
+%        0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0; %dth = om
+%        0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0; %ddx = d2x
+%        0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0; %ddy = d2y
+%        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,-1, 1; %1/axel len really
+%        0, 0, 0, 0, 0, 0, ...
+%        0, 0, 0, 0, 0,...
+%        0; %d2x
+%        0, 0, 0, 0, 0, 0, ...
+%        0, 0, 0,0,0,...
+%        0; %d2y
+%        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0;
+%        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1;
+%        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
+%        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+%  gamma = [0, 0; %x
+%           0, 0; %y
+%           0, 0; %theta
+%           0, 0; %dx
+%           0, 0; %dy
+%           0, 0; %omega
+%           .5*cos(x(3)), .5*cos(x(3)); %d2x, is this correct?
+%           .5*sin(x(3)), .5*sin(x(3)); %d2y
+%           0, 0; %Ul
+%           0, 0; %Ur
+%           1, 0; %dUl
+%           0, 1]; %dUr   
+%    end
  end
    
        
