@@ -174,30 +174,32 @@ time_to_solve = [0:delta_time:total_time];
  state_rec = zeros(length(x),num_runs); 
  
  %input noise
- Q = diag([.008, .008, .0002, ... %x, y, theta
+ Q = diag([.002, .002, .0002, ... %x, y, theta
            .005,  .005, .005, .005,... %dx, dy, d2x, d2y
            .002, .002, .002, .002].^2); %Ul, Ur, dUl, dUr
  %measurement noise
- R = diag([.05, .05, .03,... %x, y, theta
+ R = diag([.05, .05, .05,... %x, y, theta
            .01, .01, .02, .02, .01].^2); %d2x, d2y, Ul, Ur, omega
  %measurement mat
  C = [eye(3), zeros(3, 8); %x, y, theta
       zeros(4, 5), eye(4, 6); % d2x, d2y, Ul, Ur
       zeros(1, 7), -1/AxelLen, 1/AxelLen, 0, 0]; %omega
  for index = 1:num_runs
-     [phi_k, gamma_k] = robust_phi_state(x, U(index,:), phi_state, gamma_state);
-     p = ss(phi_k, gamma_k, eye(11), zeros(11,2));
-     pd = c2d(p, delta_time);
-     x = pd.A*x + pd.B*U(index,:)';
+     [A_k, B_k] = robust_phi_state(x, U(index,:), phi_state, gamma_state);
+     p = ss(A_k, B_k, eye(11), zeros(11,2));
+     pd = c2d(p, delta_time); %Get DT linearization
+     x = pd.A*x + pd.B*U(index,:)'; %Propagate estimate
      x(3) = angleDiff(x(3),0);
-     state_cov = pd.A*state_cov*pd.A' + Q;
-     K = state_cov*C' / (C*state_cov*C' + R);
+     state_cov = pd.A*state_cov*pd.A' + Q; %Propagate covariance
+     K = state_cov*C' / (C*state_cov*C' + R); %Calculate gains
+     
      meas = [x_rec(index);     y_rec(index); theta_rec(index);...
             d2x_rec(index); d2y_rec(index); ...
             Ul_read_rec(index); Ur_read_rec(index); ...
             omega_rec(index)];
-     x = x + K*(meas - C*x);
-     state_cov = (eye(11) - K*C)*state_cov;
+        
+     x = x + K*(meas - C*x); %Update estimate with measurement
+     state_cov = (eye(11) - K*C)*state_cov; %Update covariance wrt gains
      if abs(x(3) - meas(3)) > 1.8*pi
          x(3) = meas(3)
      end
