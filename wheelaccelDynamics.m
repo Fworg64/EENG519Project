@@ -174,7 +174,7 @@ time_to_solve = [0:delta_time:total_time];
  state_rec = zeros(length(x),num_runs); 
  
  %input noise
- Q = diag([.002, .002, .0002, ... %x, y, theta
+ Q = diag([.006, .006, .0008, ... %x, y, theta
            .005,  .005, .005, .005,... %dx, dy, d2x, d2y
            .002, .002, .002, .002].^2); %Ul, Ur, dUl, dUr
  %measurement noise
