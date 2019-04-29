@@ -54,4 +54,6 @@ figure();
 hold on;
 plot(curve(1,:), curve(2,:), 'b--');
 plot(delta_accum.Data(:,1), delta_accum.Data(:,2), 'gd');
+xlim([0, 8])
+ylim([-3, 3])
 %repeat.
