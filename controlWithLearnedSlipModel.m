@@ -3,19 +3,15 @@ dt = .01;
 t = 0:dt:1;
 
 axel_len = .62;
-learning_rate = .3;
+learning_rate = .2;
 %initial parameter guess:
-if (false)
+if (true)
 disp("alpha reset to 0") %this below is alpha^T (each col of alpha is vec)
 alpha = [0, 0, 0; %a_x [speed, |omega|, speed*|omega|] + speed = speed_gks
          0, 0, 0; %a_y [speed, omega, speed*omega] + speed     = side_gks
          0, 0, 0];%a_om[""]                        + omega     = omega_gks
 else
-%alpha(1:3) = alpha_x;
-%alpha(7:9) = alpha_om;
 disp("alpha trained to:")
-%alpha(1:3) = (1-learning_rate)*alpha(1:3) + (learning_rate)*alpha_x';
-%alpha(7:9) = (1-learning_rate)*alpha(7:9) + (learning_rate)*alpha_om';
 alpha = (1-learning_rate)*alpha + (learning_rate)*alpha_episode;
 disp(alpha);
 end
@@ -53,7 +49,7 @@ omega_dx = delta_theta_delta_t ./ delta_x_delta_t;
 path_fwd = 1;
 %%run simulink sys
 delta_time = .02;
-time_to_solve = 0:delta_time:15;
+time_to_solve = 0:delta_time:8;
 %coder.extrinsic('PathControl');
 %coder.extrinsic('findCPP2019Spring');
 %coder.extrinsic('sscv2019Spring');
@@ -89,18 +85,50 @@ disp(sqrt(sum(ControlOut.Data(:,4).^2)));
 %adjust control parameters
 %happens at begining of next iteration
 %print
-figure();
-subplot(2, 1, 1)
+plot_time = ControlOut.Time;
+figure()
+ax = gca;
+ax.FontSize = 24; 
+OtherFsize = 18;
+%plot robot and path
+subplot(3, 2, 1:2:3)
 hold on;
+title('Ideal Path and Robot Trajectory', 'FontSize',OtherFsize);
 plot(curve(1,:), curve(2,:), 'b--');
-plot(delta_accum.Data(:,1), delta_accum.Data(:,2), 'gd');
-xlim([0, 8])
+mymap = colormap(lines(length(delta_accum.Data(:,1))));
+scatter(delta_accum.Data(:,1), delta_accum.Data(:,2), 40, mymap);
+%plot(delta_accum.Data(:,1), delta_accum.Data(:,2), 'gd');
+legend('Ideal Path', 'Robot Path', 'FontSize',OtherFsize);
+xlabel('X (m)', 'FontSize',OtherFsize)
+ylabel('Y (m)', 'FontSize',OtherFsize)
+
+xlim([0, 7])
 ylim([-3, 3])
-subplot(2,1,2)
+%plot wheels
+subplot(3,2,2)
 hold on;
-plot(Uls);
-plot(Urs);
+title('Wheel Velocities', 'FontSize',OtherFsize);
+plot(plot_time, Uls);
+plot(plot_time, Urs);
+ylabel('Wheel Vel (m/s)', 'FontSize',OtherFsize);
+xlabel('Time (s)', 'FontSize',OtherFsize);
 ylim([-1.3, 1.3]);
-legend('Uls', 'Urs');
+legend('Uls', 'Urs', 'FontSize',OtherFsize);
+subplot(3,2,4);
 hold on;
+title('Control States', 'FontSize',OtherFsize);
+plot(plot_time,ControlOut.Data(:,3)/100.0);
+plot(plot_time,ControlOut.Data(:,4));
+plot(plot_time,ControlOut.Data(:,5));
+xlabel('Time (s)', 'FontSize',OtherFsize);
+ylim([-1, 1]);
+legend('path param [0,1]', 'path err (m)', 'angle err (rad)', 'FontSize',OtherFsize);
+subplot(3,2,5:6)
+hold on;
+title('System Parameter Estimation', 'FontSize',OtherFsize);
+ylabel('Coefficient value', 'FontSize',OtherFsize)
+xlabel('Index', 'FontSize',OtherFsize);
+stem(alpha(:), 'go');
+stem(alpha_episode(:), 'r*');
+legend('current alpha', 'calc alpha', 'FontSize',OtherFsize);
 %repeat.
