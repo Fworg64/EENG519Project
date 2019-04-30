@@ -3,7 +3,18 @@ dt = .01;
 t = 0:dt:1;
 
 axel_len = .62;
-
+learning_rate = .2;
+%initial parameter guess:
+if (false)
+alpha = [0, 0, 0; %a_x [speed, |omega|, speed*|omega|] + speed = speed_gks
+         0, 0, 0; %a_y [speed, omega, speed*omega] + speed     = side_gks
+         0, 0, 0];%a_om[""]                        + omega     = omega_gks
+else
+%alpha(1:3) = alpha_x;
+%alpha(7:9) = alpha_om;
+alpha(1:3) = (1-learning_rate)*alpha(1:3) + (learning_rate)*alpha_x';
+alpha(7:9) = (1-learning_rate)*alpha(7:9) + (learning_rate)*alpha_om';
+end
 %define start and end
 P0 = [0;0];
 angle1 = 0;
@@ -46,9 +57,28 @@ time_to_solve = 0:delta_time:15;
 GGG = simset('Solver', 'ode4', 'FixedStep', delta_time);
 sim('robotdynamic_path_simulink.slx', [0,time_to_solve(end)], GGG)
 %learn slip model from measurements/results
-
+local_speeds = 0;
+local_dist = 0;
+for index = begining_time:length(VelOut.Data(:,1))
+    robot_theta = delta_accum.Data(index, 3);
+    local_speeds(index - begining_time + 1,1) = ...
+        [cos(robot_theta)', sin(robot_theta)'] * [VelOut.Data(index,1);...
+                                                 VelOut.Data(index, 2)];
+    local_dist(index - begining_time +1,1) = ...
+        [-sin(robot_theta)',  cos(robot_theta)'] * [VelOut.Data(index,1);...
+                                                    VelOut.Data(index, 2)];   
+end
+Uls = ControlOut.Data(:, 1);%new_est_rec(7,begining_time:end)';
+Urs = ControlOut.Data(:,2); %TODO investigate lead compensator
+local_omega = (1/axel_len)*(Urs - Uls);%new_est_rec(6,begining_time:end)';
+alpha_x = learnSlip(Uls, Urs,...
+                    local_speeds, 'dx')
+alpha_d = learnSlip(Uls, Urs,...
+                    local_dist, 'dy')
+alpha_om = learnSlip(Uls, Urs,...
+                    local_omega, 'om')
 %adjust control parameters
-
+%happens at begining of next iteration
 %print
 figure();
 hold on;
