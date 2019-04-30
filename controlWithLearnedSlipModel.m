@@ -3,14 +3,16 @@ dt = .01;
 t = 0:dt:1;
 
 axel_len = .62;
-learning_rate = .2;
+learning_rate = .08;
 %initial parameter guess:
-if (true)
+if (reset_learning) %define this var outside
+iterations = 0;
 disp("alpha reset to 0") %this below is alpha^T (each col of alpha is vec)
 alpha = [0, 0, 0; %a_x [speed, |omega|, speed*|omega|] + speed = speed_gks
          0, 0, 0; %a_y [speed, omega, speed*omega] + speed     = side_gks
          0, 0, 0];%a_om[""]                        + omega     = omega_gks
 else
+iterations = iterations + 1;
 disp("alpha trained to:")
 alpha = (1-learning_rate)*alpha + (learning_rate)*alpha_episode;
 disp(alpha);
@@ -19,9 +21,9 @@ end
 P0 = [0;0];
 angle1 = 0;
 dist1 = 2.5;
-P3 = [6; 2];
+P3 = [6; 2];%*cos(iterations)];
 dist2 = 1.8;
-angle2 = -.5;
+angle2 = -sin(iterations);
 
 P1 = P0 + dist1*[cos(angle1);sin(angle1)];
 P2 = P3 - dist2*[cos(angle2);sin(angle2)];
@@ -81,24 +83,27 @@ disp("Alpha from episode:")
 alpha_episode = [alpha_x, alpha_d, alpha_om];
 disp(alpha_episode);
 disp("RMS Path Err:");
-disp(sqrt(sum(ControlOut.Data(:,4).^2)));
+rmsperr = sqrt(sum(ControlOut.Data(:,4).^2));
+disp(rmsperr);
 %adjust control parameters
 %happens at begining of next iteration
+reset_learning = false;
 %print
 plot_time = ControlOut.Time;
 figure()
-ax = gca;
-ax.FontSize = 24; 
-OtherFsize = 18;
+OtherFsize = 16;
+ticksize = 18;
 %plot robot and path
 subplot(3, 2, 1:2:3)
+ax = gca;
+ax.FontSize = ticksize; 
 hold on;
-title('Ideal Path and Robot Trajectory', 'FontSize',OtherFsize);
-plot(curve(1,:), curve(2,:), 'b--');
+title(sprintf('Ideal Path and Robot Trajectory, RMS path err: %.4f',rmsperr), 'FontSize',OtherFsize);
+plot(curve(1,:), curve(2,:), 'b--', 'LineWidth',3);
 mymap = colormap(lines(length(delta_accum.Data(:,1))));
 scatter(delta_accum.Data(:,1), delta_accum.Data(:,2), 40, mymap);
 %plot(delta_accum.Data(:,1), delta_accum.Data(:,2), 'gd');
-legend('Ideal Path', 'Robot Path', 'FontSize',OtherFsize);
+legend('Ideal Path', 'Robot Path', 'FontSize',OtherFsize, 'Location', 'southeast');
 xlabel('X (m)', 'FontSize',OtherFsize)
 ylabel('Y (m)', 'FontSize',OtherFsize)
 
@@ -106,29 +111,42 @@ xlim([0, 7])
 ylim([-3, 3])
 %plot wheels
 subplot(3,2,2)
+ax = gca;
+ax.FontSize = ticksize; 
 hold on;
 title('Wheel Velocities', 'FontSize',OtherFsize);
-plot(plot_time, Uls);
-plot(plot_time, Urs);
+plot(plot_time, Uls, 'LineWidth',3);
+plot(plot_time, Urs, 'LineWidth',3);
 ylabel('Wheel Vel (m/s)', 'FontSize',OtherFsize);
 xlabel('Time (s)', 'FontSize',OtherFsize);
 ylim([-1.3, 1.3]);
-legend('Uls', 'Urs', 'FontSize',OtherFsize);
+legend('Uls', 'Urs', 'FontSize',OtherFsize, 'Location', 'southeast');
 subplot(3,2,4);
+ax = gca;
+ax.FontSize = ticksize; 
 hold on;
 title('Control States', 'FontSize',OtherFsize);
-plot(plot_time,ControlOut.Data(:,3)/100.0);
-plot(plot_time,ControlOut.Data(:,4));
-plot(plot_time,ControlOut.Data(:,5));
+plot(plot_time,ControlOut.Data(:,3)/100.0, 'LineWidth',3);
+plot(plot_time,ControlOut.Data(:,4), 'LineWidth',3);
+plot(plot_time,ControlOut.Data(:,5), 'LineWidth',3);
 xlabel('Time (s)', 'FontSize',OtherFsize);
 ylim([-1, 1]);
-legend('path param [0,1]', 'path err (m)', 'angle err (rad)', 'FontSize',OtherFsize);
+legend('path param [0,1]', 'path err (m)', 'angle err (rad)', 'FontSize',OtherFsize, ...
+    'Location', 'southeast');
 subplot(3,2,5:6)
+ax = gca;
+ax.FontSize = ticksize; 
 hold on;
-title('System Parameter Estimation', 'FontSize',OtherFsize);
+titstr = sprintf('System Parameter Estimation, k=%d, learning rate=%.2f', iterations, learning_rate);
+title(titstr, 'FontSize',OtherFsize);
 ylabel('Coefficient value', 'FontSize',OtherFsize)
 xlabel('Index', 'FontSize',OtherFsize);
-stem(alpha(:), 'go');
-stem(alpha_episode(:), 'r*');
-legend('current alpha', 'calc alpha', 'FontSize',OtherFsize);
+stem(alpha(:), 'go', 'LineWidth',3);
+stem(alpha_episode(:), 'r*', 'LineWidth',3);
+ylim([-1.4, 1.4]);
+legend('current alpha', 'calc alpha', 'FontSize',OtherFsize, 'Location', 'southeast');
 %repeat.
+%set(gcf, 'Position', get(0, 'Screensize'));
+set(gcf,'WindowState','maximized')
+filestr = sprintf('printout/bettergainsnolearndiffangleiter%d', iterations);
+print(filestr, '-dpng');
