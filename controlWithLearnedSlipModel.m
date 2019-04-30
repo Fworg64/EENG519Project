@@ -3,25 +3,29 @@ dt = .01;
 t = 0:dt:1;
 
 axel_len = .62;
-learning_rate = .2;
+learning_rate = .3;
 %initial parameter guess:
 if (false)
+disp("alpha reset to 0") %this below is alpha^T (each col of alpha is vec)
 alpha = [0, 0, 0; %a_x [speed, |omega|, speed*|omega|] + speed = speed_gks
          0, 0, 0; %a_y [speed, omega, speed*omega] + speed     = side_gks
          0, 0, 0];%a_om[""]                        + omega     = omega_gks
 else
 %alpha(1:3) = alpha_x;
 %alpha(7:9) = alpha_om;
-alpha(1:3) = (1-learning_rate)*alpha(1:3) + (learning_rate)*alpha_x';
-alpha(7:9) = (1-learning_rate)*alpha(7:9) + (learning_rate)*alpha_om';
+disp("alpha trained to:")
+%alpha(1:3) = (1-learning_rate)*alpha(1:3) + (learning_rate)*alpha_x';
+%alpha(7:9) = (1-learning_rate)*alpha(7:9) + (learning_rate)*alpha_om';
+alpha = (1-learning_rate)*alpha + (learning_rate)*alpha_episode;
+disp(alpha);
 end
 %define start and end
 P0 = [0;0];
 angle1 = 0;
-dist1 = .5;
+dist1 = 2.5;
 P3 = [6; 2];
-dist2 = .4;
-angle2 = 0;
+dist2 = 1.8;
+angle2 = -.5;
 
 P1 = P0 + dist1*[cos(angle1);sin(angle1)];
 P2 = P3 - dist2*[cos(angle2);sin(angle2)];
@@ -59,31 +63,44 @@ sim('robotdynamic_path_simulink.slx', [0,time_to_solve(end)], GGG)
 %learn slip model from measurements/results
 local_speeds = 0;
 local_dist = 0;
-for index = begining_time:length(VelOut.Data(:,1))
+for index = 1:length(VelOut.Data(:,1))
     robot_theta = delta_accum.Data(index, 3);
-    local_speeds(index - begining_time + 1,1) = ...
+    local_speeds(index,1) = ...
         [cos(robot_theta)', sin(robot_theta)'] * [VelOut.Data(index,1);...
                                                  VelOut.Data(index, 2)];
-    local_dist(index - begining_time +1,1) = ...
+    local_dist(index,1) = ...
         [-sin(robot_theta)',  cos(robot_theta)'] * [VelOut.Data(index,1);...
                                                     VelOut.Data(index, 2)];   
 end
 Uls = ControlOut.Data(:, 1);%new_est_rec(7,begining_time:end)';
 Urs = ControlOut.Data(:,2); %TODO investigate lead compensator
-local_omega = (1/axel_len)*(Urs - Uls);%new_est_rec(6,begining_time:end)';
+local_omega = VelOut.Data(:,3);%(1/axel_len)*(Urs - Uls);%new_est_rec(6,begining_time:end)';
 alpha_x = learnSlip(Uls, Urs,...
-                    local_speeds, 'dx')
+                    local_speeds, 'dx');
 alpha_d = learnSlip(Uls, Urs,...
-                    local_dist, 'dy')
+                    local_dist, 'dy');
 alpha_om = learnSlip(Uls, Urs,...
-                    local_omega, 'om')
+                    local_omega, 'om');
+disp("Alpha from episode:")
+alpha_episode = [alpha_x, alpha_d, alpha_om];
+disp(alpha_episode);
+disp("RMS Path Err:");
+disp(sqrt(sum(ControlOut.Data(:,4).^2)));
 %adjust control parameters
 %happens at begining of next iteration
 %print
 figure();
+subplot(2, 1, 1)
 hold on;
 plot(curve(1,:), curve(2,:), 'b--');
 plot(delta_accum.Data(:,1), delta_accum.Data(:,2), 'gd');
 xlim([0, 8])
 ylim([-3, 3])
+subplot(2,1,2)
+hold on;
+plot(Uls);
+plot(Urs);
+ylim([-1.3, 1.3]);
+legend('Uls', 'Urs');
+hold on;
 %repeat.
